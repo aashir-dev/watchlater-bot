@@ -177,15 +177,30 @@ export function getThisWeekendTimestamp(timezone: string): number {
 /**
  * Parse a free-form time string using chrono-node, anchored to "now" in the
  * user's timezone. Returns null if chrono-node can't parse it.
+ *
+ * chrono-node v2's `timezone` field in ParsingReference only accepts minute
+ * offsets (numbers) or short abbreviations (e.g. "CDT") — NOT IANA names like
+ * "Asia/Kolkata". Passing an IANA name is silently ignored, causing the parsed
+ * time to be anchored to UTC instead of the user's local time.
+ *
+ * Fix: compute the UTC offset in minutes for the user's IANA timezone at the
+ * current instant using the same Intl-based helper, then pass that number.
  */
 export function parseCustomTime(
   text: string,
   timezone: string
 ): number | null {
-  const parsed = chrono.parseDate(text, {
-    instant: new Date(),
-    timezone,
-  });
+  const now = new Date();
+  // Get the UTC offset in minutes for the user's timezone at this instant.
+  // getTimezoneOffsetMs returns ms where positive = ahead of UTC (e.g. IST = +19800000 ms)
+  const offsetMs = getTimezoneOffsetMs(timezone, now);
+  const offsetMinutes = Math.round(offsetMs / 60_000); // e.g. +330 for IST, -300 for CDT
+
+  const parsed = chrono.parseDate(
+    text,
+    { instant: now, timezone: offsetMinutes },
+    { forwardDate: true }
+  );
   if (!parsed) return null;
   return parsed.getTime();
 }
