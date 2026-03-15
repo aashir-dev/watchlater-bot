@@ -176,31 +176,46 @@ export function getThisWeekendTimestamp(timezone: string): number {
 
 /**
  * Parse a free-form time string using chrono-node, anchored to "now" in the
- * user's timezone. Returns null if chrono-node can't parse it.
+ * user's IANA timezone. Returns a UTC millisecond timestamp, or null.
  *
- * chrono-node v2's `timezone` field in ParsingReference only accepts minute
- * offsets (numbers) or short abbreviations (e.g. "CDT") — NOT IANA names like
- * "Asia/Kolkata". Passing an IANA name is silently ignored, causing the parsed
- * time to be anchored to UTC instead of the user's local time.
+ * WHY NOT `{ instant: now, timezone: offsetMinutes }`?
+ * Chrono's `timezone` field shifts the *reference instant* into the given tz,
+ * but the machine's runtime timezone also affects how chrono interprets `now`.
+ * On a machine already in IST, passing `timezone: 330` applies the +5:30
+ * shift twice — once by the JS runtime, once by chrono — producing a result
+ * that is 5:30 hours too late.
  *
- * Fix: compute the UTC offset in minutes for the user's IANA timezone at the
- * current instant using the same Intl-based helper, then pass that number.
+ * THE FIX — machine-timezone-independent:
+ * 1. Get the user's current wall-clock via Intl (e.g. "00:27 AM IST on Mar 16")
+ * 2. Construct a fake Date whose UTC values equal those wall-clock numbers,
+ *    so chrono operates in "UTC mode" against the user's local wall clock.
+ * 3. Parse without a `timezone` option — no runtime tz is involved.
+ * 4. Read back the UTC components of the result (= user's local parsed time).
+ * 5. Convert those local components to true UTC via localToUtcMs.
  */
 export function parseCustomTime(
   text: string,
   timezone: string
 ): number | null {
-  const now = new Date();
-  // Get the UTC offset in minutes for the user's timezone at this instant.
-  // getTimezoneOffsetMs returns ms where positive = ahead of UTC (e.g. IST = +19800000 ms)
-  const offsetMs = getTimezoneOffsetMs(timezone, now);
-  const offsetMinutes = Math.round(offsetMs / 60_000); // e.g. +330 for IST, -300 for CDT
+  // Step 1 — user's current local wall clock
+  const local = nowInTimezone(timezone);
 
-  const parsed = chrono.parseDate(
-    text,
-    { instant: now, timezone: offsetMinutes },
-    { forwardDate: true }
+  // Step 2 — fake reference: UTC clock == user's local clock
+  const fakeRef = new Date(
+    Date.UTC(local.year, local.month - 1, local.day, local.hour, local.minute, 0)
   );
+
+  // Step 3 — let chrono parse (no `timezone`; operates on UTC values)
+  const parsed = chrono.parseDate(text, fakeRef, { forwardDate: true });
   if (!parsed) return null;
-  return parsed.getTime();
+
+  // Step 4 — UTC components of result == user's local parsed wall-clock
+  const py = parsed.getUTCFullYear();
+  const pm = parsed.getUTCMonth() + 1; // 1-indexed
+  const pd = parsed.getUTCDate();
+  const ph = parsed.getUTCHours();
+  const pmin = parsed.getUTCMinutes();
+
+  // Step 5 — convert user's local wall-clock to true UTC
+  return localToUtcMs(timezone, py, pm, pd, ph, pmin);
 }
