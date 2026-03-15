@@ -317,7 +317,7 @@ bot.on("message:text", async (ctx) => {
 // Route exports
 // ────────────────────────────────────────────────────────────────────────────
 
-export const POST = webhookCallback(bot, "next-js");
+export const POST = webhookCallback(bot, "std/http");
 
 export async function GET() {
   return new Response("OK", { status: 200 });
