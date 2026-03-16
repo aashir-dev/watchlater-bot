@@ -77,6 +77,7 @@
 | 2026-03-15 | Setup Next.js, created context file (`context.md`), convex schema, `users.ts`, and `videos.ts` | Set up Telegram bot webhook handler |
 | 2026-03-15 | Created `app/api/telegram/route.ts` (full bot logic) and `lib/reminderTime.ts` (timezone helpers) | Implement cron jobs for reminders |
 | 2026-03-15 | Implemented `convex/crons.ts` and `convex/reminders.ts` for cron jobs, added "Watched" and "Snooze" callback handlers in Telegram route. | Deploy to Vercel + register Telegram webhook |
+| 2026-03-16 | Refactored `sendDueReminders` to an `internalAction` to allow `fetch()` calls. Added `markReminderSent` mutation in `videos.ts`. | Deploy to Vercel + register Telegram webhook |
 
 ---
 
