@@ -28,7 +28,7 @@ export const sendDueReminders = internalAction({
         ]
       };
 
-      const messageText = `🎬 *${video.title}*\n\n${video.youtubeUrl}`;
+      const messageText = `🎬 ${video.title}\n\n${video.youtubeUrl}`;
 
       try {
         const res = await fetch(url, {
@@ -39,7 +39,6 @@ export const sendDueReminders = internalAction({
           body: JSON.stringify({
             chat_id: video.telegramChatId,
             text: messageText,
-            parse_mode: "Markdown",
             reply_markup: keyboard,
           }),
         });
