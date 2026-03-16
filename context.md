@@ -86,9 +86,7 @@ export const getDueReminders = internalQuery({
       .collect();
   },
 });
-      .collect();
-  },
-});
+
 ```
 
 ### Reminders (convex/reminders.ts)
