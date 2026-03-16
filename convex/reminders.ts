@@ -1,16 +1,13 @@
-import { internalMutation, mutation } from "./_generated/server";
+import { internalAction, mutation } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { v } from "convex/values";
 
-export const sendDueReminders = internalMutation({
+export const sendDueReminders = internalAction({
   args: {},
   handler: async (ctx) => {
-    const now = Date.now();
-    const dueVideos = await ctx.db
-      .query("videos")
-      .withIndex("by_watched_and_reminderTime", (q) =>
-        q.eq("watched", false).lte("reminderTime", now)
-      )
-      .collect();
+    const dueVideos = await ctx.runQuery(internal.videos.getDueReminders, { 
+      currentTime: Date.now() 
+    });
 
     if (dueVideos.length === 0) return;
 
@@ -51,8 +48,7 @@ export const sendDueReminders = internalMutation({
           console.error(`Failed to send reminder for video ${video._id}: ${await res.text()}`);
         } else {
           // Mark the reminder as sent by updating reminderTime to a far future value
-          const farFuture = Date.now() + 10 * 365 * 24 * 60 * 60 * 1000; // ~10 years in the future
-          await ctx.db.patch(video._id, { reminderTime: farFuture });
+          await ctx.runMutation(internal.videos.markReminderSent, { videoId: video._id });
         }
       } catch (e) {
         console.error(`Error sending message for video ${video._id}:`, e);

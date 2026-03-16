@@ -52,6 +52,51 @@ function nowInTimezone(timezone: string): {
  * Build a UTC timestamp (ms) for a given local date at a specific hour/minute
  * in the user's timezone.
  */
+/**
+ * Returns the UTC offset in ms for the given timezone at a given UTC instant.
+ * Uses only Intl.DateTimeFormat with numeric parts and Date.UTC — never
+ * new Date(string), which is implementation-defined and unreliable.
+ * Positive value means the timezone is ahead of UTC (e.g. IST = +19800000 ms).
+ */
+function getUtcOffsetAtMs(timezone: string, utcMs: number): number {
+  const date = new Date(utcMs);
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).formatToParts(date);
+
+  const get = (type: string) =>
+    Number(parts.find((p) => p.type === type)?.value ?? 0);
+
+  // Reconstruct the local wall-clock as a UTC timestamp for comparison
+  const localAsUtc = Date.UTC(
+    get("year"),
+    get("month") - 1,
+    get("day"),
+    get("hour") % 24, // guard against rare "24" edge case in some engines
+    get("minute"),
+    get("second")
+  );
+
+  return localAsUtc - utcMs; // positive for UTC+ zones (e.g. +19800000 for IST)
+}
+
+/**
+ * Build a UTC timestamp (ms) for a given local date at a specific hour/minute
+ * in the user's timezone.
+ *
+ * Algorithm:
+ * 1. Treat the wall-clock as if it were UTC (naiveUtc).
+ * 2. Ask Intl what local wall-clock that naiveUtc maps to in the target tz
+ *    (via getUtcOffsetAtMs) — this gives the tz offset at that moment.
+ * 3. Subtract the offset: UTC = localWallClock − offset.
+ */
 function localToUtcMs(
   timezone: string,
   year: number,
@@ -60,28 +105,9 @@ function localToUtcMs(
   hour: number,
   minute = 0
 ): number {
-  // ISO-like string that Intl can interpret as local time in the given zone
-  const pad = (n: number, len = 2) => String(n).padStart(len, "0");
-  const localIso = `${year}-${pad(month)}-${pad(day)}T${pad(hour)}:${pad(minute)}:00`;
-
-  // Find the UTC offset by formatting a reference UTC time and comparing
-  // We rely on a small binary-search / offset trick via Intl.
-  // Simpler: parse via Date constructor then subtract the tz offset.
-  const naiveDate = new Date(localIso + "Z"); // pretend it's UTC first
-  const offsetMs = getTimezoneOffsetMs(timezone, naiveDate);
-  return naiveDate.getTime() - offsetMs;
-}
-
-/**
- * Returns timezone offset in ms for a given timezone at a given UTC instant.
- * Positive value means tz is ahead of UTC (e.g. IST = +5:30 → +19800000 ms).
- */
-function getTimezoneOffsetMs(timezone: string, utcDate: Date): number {
-  const utcStr = utcDate.toLocaleString("en-US", { timeZone: "UTC" });
-  const localStr = utcDate.toLocaleString("en-US", { timeZone: timezone });
-  const utcParsed = new Date(utcStr).getTime();
-  const localParsed = new Date(localStr).getTime();
-  return localParsed - utcParsed;
+  const naiveUtc = Date.UTC(year, month - 1, day, hour, minute, 0);
+  const offsetMs = getUtcOffsetAtMs(timezone, naiveUtc);
+  return naiveUtc - offsetMs;
 }
 
 // ────────────────────────────────────────────────────────────────────────────

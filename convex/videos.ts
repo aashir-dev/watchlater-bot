@@ -1,4 +1,4 @@
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 
 export const saveVideo = mutation({
@@ -33,7 +33,7 @@ export const markWatched = mutation({
   },
 });
 
-export const getDueReminders = query({
+export const getDueReminders = internalQuery({
   args: { currentTime: v.number() },
   handler: async (ctx, args) => {
     const dueVideos = await ctx.db
@@ -44,5 +44,14 @@ export const getDueReminders = query({
       .collect();
 
     return dueVideos;
+  },
+});
+
+export const markReminderSent = internalMutation({
+  args: { videoId: v.id("videos") },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.videoId, {
+      reminderTime: Date.now() + 10 * 365 * 24 * 60 * 60 * 1000,
+    });
   },
 });
