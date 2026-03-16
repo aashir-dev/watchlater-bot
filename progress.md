@@ -8,7 +8,7 @@
 ---
 
 ## Current status
-🟡 Phase 1 (MVP) in progress
+🟡 Phase 1 — deployed, testing reminder firing
 
 ---
 
@@ -20,7 +20,7 @@
 - [x] `npx convex dev` — set up Convex project, get CONVEX_URL
 - [x] Create `.env.local` with all environment variables
 - [x] Drop `PRD.md` and `PROGRESS.md` into project root
-- [ ] Message @BotFather on Telegram, create bot, get token
+- [x] Message @BotFather on Telegram, create bot, get token
 
 ### Database
 - [x] Create `convex/schema.ts` with `videos` and `users` tables
@@ -41,14 +41,14 @@
 - [x] Create `lib/reminderTime.ts` — helper to compute timestamps per timezone
 - [x] Cron job set up in Convex (`convex/crons.ts`)
 - [x] Cron queries due reminders every hour
-- [x] Cron fires Telegram message with video link + "Watched ✓" button
-- [x] "Watched ✓" button callback marks video as watched in Convex
+- [ ] Cron fires Telegram message with video link + "Watched ✓" button
+- [ ] "Watched ✓" button callback marks video as watched in Convex
 
 ### Deployment
-- [ ] Push to GitHub
-- [ ] Deploy to Vercel
-- [ ] Set all environment variables in Vercel dashboard
-- [ ] Register Telegram webhook URL via browser
+- [x] Push to GitHub
+- [x] Deploy to Vercel
+- [x] Set all environment variables in Vercel dashboard
+- [x] Register Telegram webhook URL via browser
 
 ---
 
@@ -78,13 +78,14 @@
 | 2026-03-15 | Created `app/api/telegram/route.ts` (full bot logic) and `lib/reminderTime.ts` (timezone helpers) | Implement cron jobs for reminders |
 | 2026-03-15 | Implemented `convex/crons.ts` and `convex/reminders.ts` for cron jobs, added "Watched" and "Snooze" callback handlers in Telegram route. | Deploy to Vercel + register Telegram webhook |
 | 2026-03-16 | Refactored `sendDueReminders` to an `internalAction` to allow `fetch()` calls. Added `markReminderSent` mutation in `videos.ts`. | Deploy to Vercel + register Telegram webhook |
+| 2026-03-16 | Fixed localToUtcMs year-in-future bug, converted sendDueReminders to internalAction, deployed all fixes to Vercel | Test reminder firing end to end |
 
 ---
 
 ## Known issues / bugs
 > Log bugs here as you find them
 
-None yet.
+- Reminder firing not yet confirmed — localToUtcMs bug fixed, sendDueReminders converted to internalAction, needs final end-to-end test
 
 ---
 
