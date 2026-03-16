@@ -76,7 +76,9 @@ watchlater/
 ├── convex/
 │   ├── schema.ts               ← Database schema
 │   ├── videos.ts               ← Video mutations and queries
-│   └── users.ts                ← User mutations and queries
+│   ├── users.ts                ← User mutations and queries
+│   ├── crons.ts                ← Cron jobs definitions
+│   └── reminders.ts            ← Actions for sending external notifications
 ├── lib/
 │   └── reminderTime.ts         ← Helper to compute reminder timestamps
 ├── PRD.md                      ← This file
