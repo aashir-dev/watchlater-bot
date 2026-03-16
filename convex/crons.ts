@@ -5,7 +5,7 @@ const crons = cronJobs();
 
 crons.interval(
   "send due reminders",
-  { minutes: 60 },
+  { minutes: 1 },
   internal.reminders.sendDueReminders
 );
 
