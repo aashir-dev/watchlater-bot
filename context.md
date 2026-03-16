@@ -24,7 +24,7 @@ export default defineSchema({
     timezone: v.string(),
     clerkId: v.optional(v.string()),
     createdAt: v.number(),
-  }).index("by_telegram", ["telegramChatId"]),
+  }).index("by_telegramChatId", ["telegramChatId"]),
 
   videos: defineTable({
     userId: v.string(),
@@ -37,13 +37,13 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_chat", ["telegramChatId"])
-    .index("by_reminder", ["reminderTime", "watched"]),
+    .index("by_watched_and_reminderTime", ["watched", "reminderTime"]),
 });
 ```
 
 ### Mutation (convex/videos.ts)
 ```ts
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 
 export const saveVideo = mutation({
@@ -75,15 +75,48 @@ export const markWatched = mutation({
   },
 });
 
-export const getDueReminders = query({
-  args: { now: v.number() },
+export const getDueReminders = internalQuery({
+  args: { currentTime: v.number() },
   handler: async (ctx, args) => {
     return await ctx.db
       .query("videos")
-      .withIndex("by_reminder", (q) =>
-        q.lte("reminderTime", args.now).eq("watched", false)
+      .withIndex("by_watched_and_reminderTime", (q) =>
+        q.eq("watched", false).lte("reminderTime", args.currentTime)
       )
       .collect();
+  },
+});
+      .collect();
+  },
+});
+```
+
+### Reminders (convex/reminders.ts)
+```ts
+import { internalAction, mutation } from "./_generated/server";
+import { internal } from "./_generated/api";
+import { v } from "convex/values";
+
+export const sendDueReminders = internalAction({
+  args: {},
+  handler: async (ctx) => {
+    // Action uses ctx.runQuery and ctx.runMutation, never ctx.db directly
+    const dueVideos = await ctx.runQuery(internal.videos.getDueReminders, { 
+      currentTime: Date.now() 
+    });
+    
+    // ... loop dueVideos, fetch(url, ...), and then:
+    // await ctx.runMutation(internal.videos.markReminderSent, { videoId: video._id });
+  }
+});
+
+export const snoozeVideo = mutation({
+  // Regular mutation can still access ctx.db directly since it doesn't use fetch()
+  args: { videoId: v.id("videos") },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.videoId, {
+      reminderTime: Date.now() + 24 * 60 * 60 * 1000,
+    });
   },
 });
 ```
@@ -101,7 +134,7 @@ export const saveUser = mutation({
   handler: async (ctx, args) => {
     const existing = await ctx.db
       .query("users")
-      .withIndex("by_telegram", (q) => q.eq("telegramChatId", args.telegramChatId))
+      .withIndex("by_telegramChatId", (q) => q.eq("telegramChatId", args.telegramChatId))
       .first();
     if (existing) return existing._id;
     return await ctx.db.insert("users", {
@@ -117,7 +150,7 @@ export const getUserByChatId = query({
   handler: async (ctx, args) => {
     return await ctx.db
       .query("users")
-      .withIndex("by_telegram", (q) => q.eq("telegramChatId", args.telegramChatId))
+      .withIndex("by_telegramChatId", (q) => q.eq("telegramChatId", args.telegramChatId))
       .first();
   },
 });
@@ -216,34 +249,21 @@ const result = chrono.parseDate("tonight at 8pm", referenceDate, {
 ## Reminder time helpers (lib/reminderTime.ts)
 
 ```ts
-// Compute reminder timestamps based on button taps
-export function getReminderTime(option: string, timezone: string): number {
-  const now = new Date();
+// Example: Computing a reminder timestamp by delegating to localToUtcMs via Intl
+export function getTonightTimestamp(timezone: string): number {
+  const local = nowInTimezone(timezone);
+  let { year, month, day } = local;
 
-  switch (option) {
-    case "tonight": {
-      const tonight = new Date(now);
-      tonight.setHours(20, 0, 0, 0); // 8pm local
-      if (tonight <= now) tonight.setDate(tonight.getDate() + 1);
-      return tonight.getTime();
-    }
-    case "tomorrow": {
-      const tomorrow = new Date(now);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      tomorrow.setHours(9, 0, 0, 0); // 9am
-      return tomorrow.getTime();
-    }
-    case "weekend": {
-      const weekend = new Date(now);
-      const day = weekend.getDay();
-      const daysUntilSat = day === 6 ? 7 : 6 - day;
-      weekend.setDate(weekend.getDate() + daysUntilSat);
-      weekend.setHours(10, 0, 0, 0); // 10am Saturday
-      return weekend.getTime();
-    }
-    default:
-      return now.getTime() + 24 * 60 * 60 * 1000; // fallback: 24hrs
+  // If already past 19:45 (15 min buffer), push to tomorrow
+  if (local.hour >= 20) {
+    const tomorrow = new Date(
+      localToUtcMs(timezone, year, month, day, 0) + 24 * 60 * 60 * 1000
+    );
+    // ... Intl logic to map 'tomorrow' Date back to local year/month/day
   }
+
+  // Use localToUtcMs carefully instead of naive setHours()
+  return localToUtcMs(timezone, year, month, day, 20, 0);
 }
 ```
 
@@ -269,5 +289,8 @@ CLERK_SECRET_KEY=                        # add in Phase 2
 - Convex auto-adds `_id` and `_creationTime` — never define these in schema
 - All Convex timestamps are unix milliseconds (`Date.now()`)
 - Never commit `.env.local` to git
+- `sendDueReminders` must be an `internalAction` not an `internalMutation` — Convex mutations cannot use `fetch()`
+- Use `ctx.runQuery` and `ctx.runMutation` inside actions, never `ctx.db` directly
+<!-- Paste your context below -->
 <!-- Paste your context below -->
 
