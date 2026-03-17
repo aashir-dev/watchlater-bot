@@ -23,9 +23,10 @@ export const saveUser = mutation({
       .first();
 
     if (existingUser) {
-      return await ctx.db.patch(existingUser._id, {
+      await ctx.db.patch(existingUser._id, {
         timezone: args.timezone,
       });
+      return existingUser._id;
     }
 
     return await ctx.db.insert("users", {

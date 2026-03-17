@@ -116,12 +116,6 @@ async function getUserTimezone(chatId: string): Promise<string> {
 bot.command("start", async (ctx) => {
   const chatId = String(ctx.chat.id);
 
-  // Save user immediately with UTC as default timezone
-  await fetchMutation(api.users.saveUser, {
-    telegramChatId: chatId,
-    timezone: "UTC",
-  });
-
   awaitingTimezone.add(chatId);
 
   await ctx.reply(
