@@ -9,6 +9,19 @@ export default defineSchema({
     createdAt: v.number(),
   }).index("by_telegramChatId", ["telegramChatId"]),
 
+  sessions: defineTable({
+    telegramChatId: v.string(),
+    state: v.string(), // "awaiting_timezone" | "awaiting_time" | "awaiting_custom_time"
+    pendingVideo: v.optional(
+      v.object({
+        youtubeUrl: v.string(),
+        title: v.string(),
+        thumbnail: v.string(),
+      })
+    ),
+    updatedAt: v.number(),
+  }).index("by_telegramChatId", ["telegramChatId"]),
+
   videos: defineTable({
     userId: v.string(),
     telegramChatId: v.string(),

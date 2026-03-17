@@ -29,18 +29,7 @@ type PendingVideo = {
   thumbnail: string;
 };
 
-/** Awaiting a timezone reply after /start */
-const awaitingTimezone = new Set<string>();
-
-/**
- * Video waiting for a time selection (Tonight / Tomorrow / Weekend / Custom).
- * Populated as soon as a YouTube URL is detected — before any button is tapped.
- * This avoids embedding the URL in callback data (Telegram's 64-char limit).
- */
-const pendingVideo = new Map<string, PendingVideo>();
-
-/** Awaiting a custom time string after user tapped "Custom ✏️" */
-const awaitingCustomTime = new Map<string, PendingVideo>();
+// Removed in-memory state, now using Convex sessions
 
 // ────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -116,7 +105,10 @@ async function getUserTimezone(chatId: string): Promise<string> {
 bot.command("start", async (ctx) => {
   const chatId = String(ctx.chat.id);
 
-  awaitingTimezone.add(chatId);
+  await fetchMutation(api.sessions.setSession, {
+    telegramChatId: chatId,
+    state: "awaiting_timezone",
+  });
 
   await ctx.reply(
     `👋 Welcome to *WatchLater Bot*!
@@ -160,7 +152,11 @@ bot.on("callback_query:data", async (ctx) => {
     return;
   }
 
-  const video = pendingVideo.get(chatId);
+  const session = await fetchQuery(api.sessions.getSession, {
+    telegramChatId: chatId,
+  });
+  const video = session?.state === "awaiting_time" ? session.pendingVideo : null;
+
   if (!video) {
     await ctx.reply("⚠️ Session expired. Please send the YouTube link again.");
     return;
@@ -178,7 +174,7 @@ bot.on("callback_query:data", async (ctx) => {
       reminderTime = getThisWeekendTimestamp(timezone);
     }
 
-    pendingVideo.delete(chatId);
+    await fetchMutation(api.sessions.clearSession, { telegramChatId: chatId });
     await saveVideoForChat(chatId, video, reminderTime);
 
     const when = new Date(reminderTime).toLocaleString("en-US", {
@@ -197,8 +193,11 @@ bot.on("callback_query:data", async (ctx) => {
     );
   } else if (action === "custom") {
     // Move from pendingVideo → awaitingCustomTime (custom time entry flow)
-    pendingVideo.delete(chatId);
-    awaitingCustomTime.set(chatId, video);
+    await fetchMutation(api.sessions.setSession, {
+      telegramChatId: chatId,
+      state: "awaiting_custom_time",
+      pendingVideo: video,
+    });
     await ctx.reply(
       '🕐 *When should I remind you?*\n\nType something like:\n• "tonight at 10pm"\n• "friday 7pm"\n• "in 3 hours"\n• "next monday morning"',
       { parse_mode: "Markdown" }
@@ -214,8 +213,12 @@ bot.on("message:text", async (ctx) => {
   const chatId = String(ctx.chat.id);
   const text = ctx.message.text.trim();
 
+  const session = await fetchQuery(api.sessions.getSession, {
+    telegramChatId: chatId,
+  });
+
   // ── 1. Custom time reply ──────────────────────────────────────────────────
-  if (awaitingCustomTime.has(chatId)) {
+  if (session?.state === "awaiting_custom_time") {
     const timezone = await getUserTimezone(chatId);
     const reminderTime = parseCustomTime(text, timezone);
 
@@ -226,8 +229,8 @@ bot.on("message:text", async (ctx) => {
       return;
     }
 
-    const video = awaitingCustomTime.get(chatId)!;
-    awaitingCustomTime.delete(chatId);
+    const video = session.pendingVideo!;
+    await fetchMutation(api.sessions.clearSession, { telegramChatId: chatId });
 
     await saveVideoForChat(chatId, video, reminderTime);
 
@@ -249,7 +252,7 @@ bot.on("message:text", async (ctx) => {
   }
 
   // ── 2. Timezone reply (after /start) ─────────────────────────────────────
-  if (awaitingTimezone.has(chatId)) {
+  if (session?.state === "awaiting_timezone") {
     // Basic IANA timezone validation via Intl
     try {
       Intl.DateTimeFormat(undefined, { timeZone: text });
@@ -266,7 +269,7 @@ bot.on("message:text", async (ctx) => {
       timezone: text,
     });
 
-    awaitingTimezone.delete(chatId);
+    await fetchMutation(api.sessions.clearSession, { telegramChatId: chatId });
 
     await ctx.reply(
       `✅ Got it! Your timezone is set to *${text}*.\n\nNow send me a YouTube link and I'll remind you to watch it! 🎬`,
@@ -289,7 +292,11 @@ bot.on("message:text", async (ctx) => {
     }
 
     // Store video server-side — callback data will just be a bare action word
-    pendingVideo.set(chatId, { youtubeUrl, ...videoInfo });
+    await fetchMutation(api.sessions.setSession, {
+      telegramChatId: chatId,
+      state: "awaiting_time",
+      pendingVideo: { youtubeUrl, ...videoInfo },
+    });
 
     await ctx.reply(
       `📺 *${videoInfo.title}*\n\nWhen should I remind you to watch this?`,

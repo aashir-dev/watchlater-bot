@@ -77,15 +77,16 @@
 | 2026-03-15 | Setup Next.js, created context file (`context.md`), convex schema, `users.ts`, and `videos.ts` | Set up Telegram bot webhook handler |
 | 2026-03-15 | Created `app/api/telegram/route.ts` (full bot logic) and `lib/reminderTime.ts` (timezone helpers) | Implement cron jobs for reminders |
 | 2026-03-15 | Implemented `convex/crons.ts` and `convex/reminders.ts` for cron jobs, added "Watched" and "Snooze" callback handlers in Telegram route. | Deploy to Vercel + register Telegram webhook |
-| 2026-03-16 | Refactored `sendDueReminders` to an `internalAction` to allow `fetch()` calls. Added `markReminderSent` mutation in `videos.ts`. | Deploy to Vercel + register Telegram webhook |
-| 2026-03-16 | Fixed localToUtcMs year-in-future bug, converted sendDueReminders to internalAction, deployed all fixes to Vercel | Test reminder firing end to end |
+| 2026-03-16 | Refactored `sendDueReminders` to `internalAction`, fixed `localToUtcMs` bug, and deployed fixes to Vercel. | Test reminder firing end to end |
+| 2026-03-17 | Fixed timezone patching in `saveUser` and removed premature UTC save in `/start` command. | Deploy and test timezone updates. |
+| 2026-03-17 | Fixed in-memory state bug. Moved conversation state to Convex `sessions` table instead of Maps/Sets | Commit and push to deploy to Vercel |
 
 ---
 
 ## Known issues / bugs
 > Log bugs here as you find them
 
-- Reminder firing not yet confirmed — localToUtcMs bug fixed, sendDueReminders converted to internalAction, needs final end-to-end test
+- Reminder firing not yet confirmed — needs final end-to-end test on Vercel
 
 ---
 
@@ -98,4 +99,4 @@
 | Convex over Supabase | Already familiar, real-time built-in, no SQL needed |
 | Clerk for auth | Integrates cleanly with Convex and Stripe |
 | chrono-node for time parsing | Handles natural language without custom regex |
-| Buttons-first UX | Zero friction for users, no parsing errors |Paste your content here...*
+| Buttons-first UX | Zero friction for users, no parsing errors |

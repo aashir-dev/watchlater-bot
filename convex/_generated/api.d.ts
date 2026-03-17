@@ -10,6 +10,7 @@
 
 import type * as crons from "../crons.js";
 import type * as reminders from "../reminders.js";
+import type * as sessions from "../sessions.js";
 import type * as users from "../users.js";
 import type * as videos from "../videos.js";
 
@@ -22,6 +23,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   crons: typeof crons;
   reminders: typeof reminders;
+  sessions: typeof sessions;
   users: typeof users;
   videos: typeof videos;
 }>;
