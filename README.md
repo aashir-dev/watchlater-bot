@@ -1,36 +1,114 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# WatchLater Bot 🎬
 
-## Getting Started
+A Telegram bot that reminds you to watch YouTube videos you saved but keep forgetting.
 
-First, run the development server:
+![Demo](assets/demo.gif)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+[![Next.js](https://img.shields.io/badge/Next.js_15-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
+[![Convex](https://img.shields.io/badge/Convex-EE342F?style=for-the-badge&logo=convex)](https://convex.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Vercel](https://img.shields.io/badge/Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com/)
+[![Telegram](https://img.shields.io/badge/Telegram-26A5E4?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/mywatchlaterbot)
+
+## Try it
+👉 [t.me/mywatchlaterbot](https://t.me/mywatchlaterbot)
+
+---
+
+## How it works
+
+1. Send the bot a YouTube link
+2. Pick when you want to be reminded — Tonight, Tomorrow, This Weekend, or a custom time
+3. The bot saves the video and fires a Telegram reminder at exactly the right time in your timezone
+4. Tap **Watched ✓** when you're done — or **Snooze** to push it to tomorrow
+
+📱 On mobile you can share videos directly from the YouTube app to the bot — no copy-pasting needed.
+
+---
+
+## Features
+
+- 🔗 Auto-fetches video title and thumbnail via YouTube oEmbed API
+- 🌍 Timezone-aware reminders (supports any IANA timezone)
+- 🕐 Natural language time parsing — "friday 9pm", "in 3 hours", "next monday morning"
+- ⏰ Cron job runs every minute, fires reminders automatically
+- ✅ Mark videos as watched or snooze with inline buttons
+- 💾 Persistent session state — works reliably across serverless function instances
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Framework | Next.js 15 (App Router) |
+| Database | Convex |
+| Telegram bot | grammY |
+| Time parsing | chrono-node |
+| Deployment | Vercel |
+| Language | TypeScript |
+
+---
+
+## Project Structure
+```
+watchlater-bot/
+├── app/
+│   └── api/
+│       └── telegram/
+│           └── route.ts        ← Telegram webhook handler
+├── convex/
+│   ├── schema.ts               ← Database schema
+│   ├── videos.ts               ← Video mutations and queries
+│   ├── users.ts                ← User mutations and queries
+│   ├── sessions.ts             ← Conversation state management
+│   ├── reminders.ts            ← Reminder sending action
+│   └── crons.ts                ← Cron job definitions
+└── lib/
+    └── reminderTime.ts         ← Timezone-aware timestamp helpers
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Local Development
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Clone the repo
+```bash
+   git clone https://github.com/aashir-dev/watchlater-bot
+   cd watchlater-bot
+```
 
-## Learn More
+2. Install dependencies
+```bash
+   npm install
+```
 
-To learn more about Next.js, take a look at the following resources:
+3. Set up environment variables — create `.env.local`:
+```
+   TELEGRAM_BOT_TOKEN=
+   NEXT_PUBLIC_CONVEX_URL=
+   CONVEX_DEPLOYMENT=
+   NEXT_PUBLIC_CONVEX_SITE_URL=
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+4. Start Convex
+```bash
+   npx convex dev
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+5. Start the dev server
+```bash
+   npm run dev
+```
 
-## Deploy on Vercel
+6. Register your Telegram webhook:
+```
+   https://api.telegram.org/bot<TOKEN>/setWebhook?url=<YOUR_URL>/api/telegram
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Author
+
+Built by [Aashir](https://github.com/aashir-dev)
+
