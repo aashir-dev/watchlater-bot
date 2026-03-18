@@ -2,7 +2,7 @@
 
 A Telegram bot that reminds you to watch YouTube videos you saved but keep forgetting.
 
-![Demo](assets/demo.gif)
+![Demo](asset/demo.gif)
 
 [![Next.js](https://img.shields.io/badge/Next.js_15-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
 [![Convex](https://img.shields.io/badge/Convex-EE342F?style=for-the-badge&logo=convex)](https://convex.dev/)
